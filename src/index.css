@@ -1,0 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-[#2c2c2c] text-[#e0e0e0] font-pixel;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+/* Scanline effect */
+.scanlines {
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0),
+    rgba(255,255,255,0) 50%,
+    rgba(0,0,0,0.1) 50%,
+    rgba(0,0,0,0.1)
+  );
+  background-size: 100% 4px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #1a1a1a; 
+}
+::-webkit-scrollbar-thumb {
+  background: #4a4a4a; 
+  border-radius: 4px;
+}
