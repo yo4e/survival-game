@@ -58,22 +58,43 @@ const STAGES = [
   }
 ];
 
+// --- Game Data ---
+const SAVE_KEY = 'survival-game-save-v1';
+
+const loadState = (key, defaultVal) => {
+  const saved = localStorage.getItem(SAVE_KEY);
+  if (!saved) return defaultVal;
+  try {
+    const parsed = JSON.parse(saved);
+    return parsed[key] !== undefined ? parsed[key] : defaultVal;
+  } catch (e) {
+    console.error('Save load error', e);
+    return defaultVal;
+  }
+};
+
 export default function App() {
   // --- State ---
-  const [stageIdx, setStageIdx] = useState(0);
-  const [day, setDay] = useState(1);
-  const [stats, setStats] = useState({
+  const [stageIdx, setStageIdx] = useState(() => loadState('stageIdx', 0));
+  const [day, setDay] = useState(() => loadState('day', 1));
+  const [stats, setStats] = useState(() => loadState('stats', {
     hp: 100,      // Max 100
     stamina: 100, // Max 100
     sanity: 100,  // Max 100
     hunger: 0,    // Max 100 (0 is best)
-  });
-  const [logs, setLogs] = useState(['ゲーム開始...生き残れ。']);
-  const [gameOver, setGameOver] = useState(false);
-  const [gameClear, setGameClear] = useState(false);
+  }));
+  const [logs, setLogs] = useState(() => loadState('logs', ['ゲーム開始...生き残れ。']));
+  const [gameOver, setGameOver] = useState(() => loadState('gameOver', false));
+  const [gameClear, setGameClear] = useState(() => loadState('gameClear', false));
   const logsEndRef = useRef(null);
 
   const currentStage = STAGES[stageIdx];
+
+  // Auto-Save
+  useEffect(() => {
+    const dataToSave = { stageIdx, day, stats, logs, gameOver, gameClear };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
+  }, [stageIdx, day, stats, logs, gameOver, gameClear]);
 
   // Auto-scroll logs
   useEffect(() => {
@@ -221,6 +242,7 @@ export default function App() {
   };
 
   const restart = () => {
+    localStorage.removeItem(SAVE_KEY);
     setStageIdx(0);
     setDay(1);
     setStats({ hp: 100, stamina: 100, sanity: 100, hunger: 0 });
@@ -270,9 +292,9 @@ export default function App() {
       <main className="flex-1 w-full bg-[#000] p-4 overflow-y-auto space-y-2 z-10 border-b-2 border-[#444]">
         {logs.map((log, i) => (
           <div key={i} className={`text-sm leading-relaxed border-l-2 pl-2 ${log.includes('GAMEOVER') ? 'border-red-600 text-red-500 font-bold' :
-              log.includes('success') ? 'border-green-500 text-green-400' :
-                log.includes('danger') ? 'border-red-500 text-red-400' :
-                  'border-gray-700 text-gray-300'
+            log.includes('success') ? 'border-green-500 text-green-400' :
+              log.includes('danger') ? 'border-red-500 text-red-400' :
+                'border-gray-700 text-gray-300'
             }`}>
             {log}
           </div>
