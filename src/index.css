@@ -5,9 +5,13 @@
 @tailwind utilities;
 
 body {
-  @apply bg-[#2c2c2c] text-[#e0e0e0] font-pixel;
+  @apply bg-[#111] text-[#e0e0e0] font-pixel;
   touch-action: manipulation;
   overscroll-behavior: none;
+}
+
+.font-pixel {
+  font-family: 'DotGothic16', sans-serif;
 }
 
 /* Scanline effect */
@@ -27,8 +31,52 @@ body {
   bottom: 0;
   pointer-events: none;
   z-index: 50;
+  opacity: 0.15;
 }
 
+/* Shake animation for damage */
+@keyframes shake {
+  0% { transform: translate(1px, 1px) rotate(0deg); }
+  10% { transform: translate(-1px, -2px) rotate(-1deg); }
+  20% { transform: translate(-3px, 0px) rotate(1deg); }
+  30% { transform: translate(3px, 2px) rotate(0deg); }
+  40% { transform: translate(1px, -1px) rotate(1deg); }
+  50% { transform: translate(-1px, 2px) rotate(-1deg); }
+  60% { transform: translate(-3px, 1px) rotate(0deg); }
+  70% { transform: translate(3px, 1px) rotate(-1deg); }
+  80% { transform: translate(-1px, -1px) rotate(1deg); }
+  90% { transform: translate(1px, 2px) rotate(0deg); }
+  100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+.shake {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* Damage Flash */
+@keyframes flash-red {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.3; background-color: red; }
+}
+.damage-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  animation: flash-red 0.5s ease-out;
+  z-index: 40;
+}
+
+/* Fade In Log */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -38,4 +86,54 @@ body {
 ::-webkit-scrollbar-thumb {
   background: #4a4a4a; 
   border-radius: 4px;
+}
+
+/* Hide scrollbar for clean look */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Snow Effect */
+.weather-snow {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  background-image:
+      radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+      radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+      radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0)),
+      radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+      radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0)),
+      radial-gradient(2px 2px at 160px 120px, #ddd, rgba(0,0,0,0));
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  animation: snow 4s linear infinite;
+  opacity: 0.3;
+  z-index: 5;
+}
+@keyframes snow {
+  0% { background-position: 0 0; }
+  100% { background-position: 100px 200px; }
+}
+
+/* Rain Effect (for Island maybe?) or Dust for Wasteland */
+.weather-dust {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  background-image:
+      radial-gradient(1px 1px at 10px 10px, rgba(150, 100, 50, 0.5), transparent),
+      radial-gradient(2px 2px at 50px 50px, rgba(150, 100, 50, 0.3), transparent);
+  background-size: 100px 100px;
+  animation: dust 10s linear infinite;
+  z-index: 5;
+}
+@keyframes dust {
+  0% { background-position: 0 0; }
+  50% { background-position: 50px 20px; }
+  100% { background-position: 0 0; }
 }
