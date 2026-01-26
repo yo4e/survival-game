@@ -91,6 +91,30 @@ const loadState = (key, defaultVal) => {
   }
 };
 
+// Memoized Log Item Component to prevent unnecessary re-renders
+const LogItem = React.memo(({ log }) => {
+  // Determine styles based on log type or content (backward compatibility)
+  const isGameOver = typeof log === 'string' && log.includes('GAMEOVER');
+  const isSuccess = typeof log === 'string' && log.includes('success');
+
+  let className = 'text-sm leading-relaxed border-l-2 pl-2 animate-fade-in ';
+  if (log.type === 'danger' || isGameOver) {
+    className += 'border-red-600 text-red-500 font-bold';
+  } else if (log.type === 'success' || isSuccess) {
+    className += 'border-green-500 text-green-400';
+  } else if (log.type === 'warn') {
+    className += 'border-yellow-500 text-yellow-300';
+  } else {
+    className += 'border-gray-700 text-gray-300';
+  }
+
+  return (
+    <div className={className}>
+      {log.text || log}
+    </div>
+  );
+});
+
 export default function App() {
   // --- State ---
   const [stageIdx, setStageIdx] = useState(() => loadState('stageIdx', 0));
@@ -103,11 +127,21 @@ export default function App() {
   }));
   const [inventory, setInventory] = useState(() => loadState('inventory', {}));
 
-  // Logs state with migration support
+  // Logs state with migration support and ID assurance
   const [logs, setLogs] = useState(() => {
-    const loaded = loadState('logs', [{ text: 'ゲーム開始...生き残れ。', type: 'normal' }]);
-    if (Array.isArray(loaded) && loaded.length > 0 && typeof loaded[0] === 'string') {
-      return loaded.map(txt => ({ text: txt, type: 'normal' }));
+    const loaded = loadState('logs', [{ text: 'ゲーム開始...生き残れ。', type: 'normal', id: 'init' }]);
+    if (Array.isArray(loaded) && loaded.length > 0) {
+      return loaded.map((item, i) => {
+        // Migrate string logs
+        if (typeof item === 'string') {
+          return { text: item, type: 'normal', id: `migrated-${i}-${Date.now()}` };
+        }
+        // Ensure ID exists
+        if (!item.id) {
+          return { ...item, id: `restored-${i}-${Date.now()}` };
+        }
+        return item;
+      });
     }
     return loaded;
   });
@@ -132,7 +166,8 @@ export default function App() {
 
   // --- Logic ---
   const addLog = (text, type = 'normal') => {
-    setLogs(prev => [...prev, { text, type, id: Date.now() }]);
+    // Add random suffix to Date.now() to ensure uniqueness even in same ms
+    setLogs(prev => [...prev, { text, type, id: Date.now() + Math.random() }]);
   };
 
   const updateStat = (key, delta) => {
@@ -497,15 +532,8 @@ export default function App() {
 
       {/* Log Window */}
       <main className="flex-1 w-full bg-[#000] p-4 overflow-y-auto space-y-2 z-10 scrollbar-hide">
-        {logs.map((log, i) => (
-          <div key={i} className={`text-sm leading-relaxed border-l-2 pl-2 animate-fade-in ${
-            log.type === 'danger' || (typeof log === 'string' && log.includes('GAMEOVER')) ? 'border-red-600 text-red-500 font-bold' :
-            log.type === 'success' || (typeof log === 'string' && log.includes('success')) ? 'border-green-500 text-green-400' :
-            log.type === 'warn' ? 'border-yellow-500 text-yellow-300' :
-            'border-gray-700 text-gray-300'
-            }`}>
-            {log.text || log}
-          </div>
+        {logs.map((log) => (
+          <LogItem key={log.id} log={log} />
         ))}
         <div ref={logsEndRef} />
       </main>
