@@ -91,6 +91,30 @@ const loadState = (key, defaultVal) => {
   }
 };
 
+// Memoized Log Item Component for Performance
+const LogItem = React.memo(({ log }) => {
+  const isString = typeof log === 'string';
+  const text = isString ? log : (log.text || log);
+  const type = isString ? 'normal' : log.type;
+
+  let className = "text-sm leading-relaxed border-l-2 pl-2 animate-fade-in ";
+  if (type === 'danger' || (isString && text.includes('GAMEOVER'))) {
+    className += "border-red-600 text-red-500 font-bold";
+  } else if (type === 'success' || (isString && text.includes('success'))) {
+    className += "border-green-500 text-green-400";
+  } else if (type === 'warn') {
+    className += "border-yellow-500 text-yellow-300";
+  } else {
+    className += "border-gray-700 text-gray-300";
+  }
+
+  return (
+    <div className={className}>
+      {text}
+    </div>
+  );
+});
+
 export default function App() {
   // --- State ---
   const [stageIdx, setStageIdx] = useState(() => loadState('stageIdx', 0));
@@ -498,14 +522,7 @@ export default function App() {
       {/* Log Window */}
       <main className="flex-1 w-full bg-[#000] p-4 overflow-y-auto space-y-2 z-10 scrollbar-hide">
         {logs.map((log, i) => (
-          <div key={i} className={`text-sm leading-relaxed border-l-2 pl-2 animate-fade-in ${
-            log.type === 'danger' || (typeof log === 'string' && log.includes('GAMEOVER')) ? 'border-red-600 text-red-500 font-bold' :
-            log.type === 'success' || (typeof log === 'string' && log.includes('success')) ? 'border-green-500 text-green-400' :
-            log.type === 'warn' ? 'border-yellow-500 text-yellow-300' :
-            'border-gray-700 text-gray-300'
-            }`}>
-            {log.text || log}
-          </div>
+          <LogItem key={i} log={log} />
         ))}
         <div ref={logsEndRef} />
       </main>
