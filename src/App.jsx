@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/purity */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Flame, Snowflake, Skull, Fish, Radio, Tent,
   Wind, Ticket, Syringe, TreePine, Waves, Ban,
@@ -433,6 +433,24 @@ export default function App() {
   };
 
   // --- Rendering ---
+  // ⚡ Optimization: Memoize log rendering to prevent expensive re-renders
+  // of the log list (which can grow large) when other state (like 'isDamaged' shake) changes.
+  const logWindow = useMemo(() => (
+    <main className="flex-1 w-full bg-[#000] p-4 overflow-y-auto space-y-2 z-10 scrollbar-hide">
+      {logs.map((log, i) => (
+        <div key={i} className={`text-sm leading-relaxed border-l-2 pl-2 animate-fade-in ${
+          log.type === 'danger' || (typeof log === 'string' && log.includes('GAMEOVER')) ? 'border-red-600 text-red-500 font-bold' :
+          log.type === 'success' || (typeof log === 'string' && log.includes('success')) ? 'border-green-500 text-green-400' :
+          log.type === 'warn' ? 'border-yellow-500 text-yellow-300' :
+          'border-gray-700 text-gray-300'
+          }`}>
+          {log.text || log}
+        </div>
+      ))}
+      <div ref={logsEndRef} />
+    </main>
+  ), [logs]);
+
   return (
     <div className={`relative min-h-screen ${currentStage.bg || 'bg-[#111]'} text-[#eee] flex flex-col items-center max-w-md mx-auto shadow-2xl overflow-hidden font-sans transition-colors duration-1000 ${isDamaged ? 'shake' : ''}`}>
       <div className="scanlines pointer-events-none fixed inset-0 z-50 opacity-10"></div>
@@ -496,19 +514,7 @@ export default function App() {
       </section>
 
       {/* Log Window */}
-      <main className="flex-1 w-full bg-[#000] p-4 overflow-y-auto space-y-2 z-10 scrollbar-hide">
-        {logs.map((log, i) => (
-          <div key={i} className={`text-sm leading-relaxed border-l-2 pl-2 animate-fade-in ${
-            log.type === 'danger' || (typeof log === 'string' && log.includes('GAMEOVER')) ? 'border-red-600 text-red-500 font-bold' :
-            log.type === 'success' || (typeof log === 'string' && log.includes('success')) ? 'border-green-500 text-green-400' :
-            log.type === 'warn' ? 'border-yellow-500 text-yellow-300' :
-            'border-gray-700 text-gray-300'
-            }`}>
-            {log.text || log}
-          </div>
-        ))}
-        <div ref={logsEndRef} />
-      </main>
+      {logWindow}
 
       {/* Action Grid */}
       <footer className="w-full p-2 bg-[#222] z-10 border-t border-[#444]">
