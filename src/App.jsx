@@ -1,11 +1,12 @@
 /* eslint-disable react-hooks/purity */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Flame, Snowflake, Skull, Fish, Radio, Tent,
   Wind, Ticket, Syringe, TreePine, Waves, Ban,
   Heart, Zap, Brain, Moon, Sun, AlertTriangle,
   Backpack, Utensils, Droplet, PlusCircle
 } from 'lucide-react';
+import LogViewer from './components/LogViewer';
 
 // --- Game Data ---
 const ITEMS = {
@@ -115,7 +116,6 @@ export default function App() {
   const [gameOver, setGameOver] = useState(() => loadState('gameOver', false));
   const [gameClear, setGameClear] = useState(() => loadState('gameClear', false));
   const [isDamaged, setIsDamaged] = useState(false);
-  const logsEndRef = useRef(null);
 
   const currentStage = STAGES[stageIdx];
 
@@ -124,11 +124,6 @@ export default function App() {
     const dataToSave = { stageIdx, day, stats, inventory, logs, gameOver, gameClear };
     localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
   }, [stageIdx, day, stats, inventory, logs, gameOver, gameClear]);
-
-  // Auto-scroll logs
-  useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
 
   // --- Logic ---
   const addLog = (text, type = 'normal') => {
@@ -496,19 +491,7 @@ export default function App() {
       </section>
 
       {/* Log Window */}
-      <main className="flex-1 w-full bg-[#000] p-4 overflow-y-auto space-y-2 z-10 scrollbar-hide">
-        {logs.map((log, i) => (
-          <div key={i} className={`text-sm leading-relaxed border-l-2 pl-2 animate-fade-in ${
-            log.type === 'danger' || (typeof log === 'string' && log.includes('GAMEOVER')) ? 'border-red-600 text-red-500 font-bold' :
-            log.type === 'success' || (typeof log === 'string' && log.includes('success')) ? 'border-green-500 text-green-400' :
-            log.type === 'warn' ? 'border-yellow-500 text-yellow-300' :
-            'border-gray-700 text-gray-300'
-            }`}>
-            {log.text || log}
-          </div>
-        ))}
-        <div ref={logsEndRef} />
-      </main>
+      <LogViewer logs={logs} />
 
       {/* Action Grid */}
       <footer className="w-full p-2 bg-[#222] z-10 border-t border-[#444]">
