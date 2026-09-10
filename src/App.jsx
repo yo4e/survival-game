@@ -91,6 +91,13 @@ const loadState = (key, defaultVal) => {
   }
 };
 
+const clampStat = (value) => Math.max(0, Math.min(100, value));
+
+const applyStatDelta = (baseStats, key, delta) => ({
+  ...baseStats,
+  [key]: clampStat(baseStats[key] + delta),
+});
+
 export default function App() {
   // --- State ---
   const [stageIdx, setStageIdx] = useState(() => loadState('stageIdx', 0));
@@ -135,20 +142,17 @@ export default function App() {
     setLogs(prev => [...prev, { text, type, id: Date.now() }]);
   };
 
+  const triggerDamageEffect = () => {
+    setIsDamaged(true);
+    setTimeout(() => setIsDamaged(false), 500);
+  };
+
   const updateStat = (key, delta) => {
-    setStats(prev => {
-      const newVal = Math.max(0, Math.min(100, prev[key] + delta));
-      return { ...prev, [key]: newVal };
-    });
+    setStats(prev => applyStatDelta(prev, key, delta));
 
     if (key === 'hp' && delta < 0) {
       triggerDamageEffect();
     }
-  };
-
-  const triggerDamageEffect = () => {
-    setIsDamaged(true);
-    setTimeout(() => setIsDamaged(false), 500);
   };
 
   const addItem = (itemId, count = 1) => {
@@ -188,9 +192,15 @@ export default function App() {
       return;
     }
 
-    // Pay Cost
-    updateStat('stamina', -cost);
-    updateStat('hunger', 5);
+    let nextStats = applyStatDelta(stats, 'stamina', -cost);
+    nextStats = applyStatDelta(nextStats, 'hunger', 5);
+
+    const applyActionStat = (key, delta) => {
+      nextStats = applyStatDelta(nextStats, key, delta);
+      if (key === 'hp' && delta < 0) {
+        triggerDamageEffect();
+      }
+    };
 
     // Action Effects
     const roll = Math.random();
@@ -199,24 +209,32 @@ export default function App() {
 
     switch (actionId) {
       case 'rest': {
-        const sanityHeal = 10;
-        setStats(prev => ({
-          ...prev,
+        const nextDay = day + 1;
+        nextStats = {
+          ...nextStats,
           stamina: 100,
-          hp: Math.min(100, prev.hp + 5),
-          sanity: Math.min(100, prev.sanity + sanityHeal)
-        }));
-        setDay(d => d + 1);
-        addLog(`--- ${day + 1}日目 ---`);
-        processNightEvent();
-        checkSurvival();
+          hp: clampStat(nextStats.hp + 5),
+          sanity: clampStat(nextStats.sanity + 10),
+        };
+
+        addLog(`--- ${nextDay}日目 ---`);
+        nextStats = processNightEvent(nextStats);
+        setStats(nextStats);
+        setDay(nextDay);
+
+        if (nextStats.hp <= 0) {
+          setGameOver(true);
+          addLog('もう動けない... [GAMEOVER]', 'danger');
+        } else {
+          checkSurvival(nextDay);
+        }
         return; // End turn
       }
 
       case 'fire':
         if (isSuccess) {
-          updateStat('hp', 10);
-          updateStat('sanity', 5);
+          applyActionStat('hp', 10);
+          applyActionStat('sanity', 5);
           addLog('火が燃えている。暖かい...');
         } else {
           addLog('火がなかなかつかない...');
@@ -231,7 +249,7 @@ export default function App() {
              addItem('clean_water', 1);
           }
         } else {
-          updateStat('hp', -5);
+          applyActionStat('hp', -5);
           addLog('何も見つからない。指先が凍傷になりそうだ。');
         }
         break;
@@ -258,7 +276,7 @@ export default function App() {
         break;
 
       case 'check': // Shelter check
-        updateStat('sanity', 5);
+        applyActionStat('sanity', 5);
         addLog('設備は正常だ。少し安心した。');
         break;
 
@@ -276,7 +294,7 @@ export default function App() {
         if (trade) {
           addItem('potato', 1);
         } else {
-          updateStat('sanity', -10);
+          applyActionStat('sanity', -10);
           addLog('憲兵に見つかりそうになった！逃げた。');
         }
         break;
@@ -286,38 +304,48 @@ export default function App() {
         if (isSuccess) {
             addItem('water', 1);
         } else {
-            updateStat('hp', -5);
+            applyActionStat('hp', -5);
             addLog('崩れた壁に足をぶつけた。痛い。');
         }
         break;
 
       case 'hiding':
-         updateStat('sanity', 5);
+         applyActionStat('sanity', 5);
          addLog('じっと息を潜めた...');
          break;
 
       case 'radio':
         addLog('ノイズの中に人の声が聞こえた気がする...');
-        updateStat('sanity', 2);
+        applyActionStat('sanity', 2);
         break;
 
       default:
         addLog('行動した。');
     }
 
-    // Check Stats after action
-    if (stats.hunger >= 100) {
-      updateStat('hp', -10);
+    if (nextStats.hunger >= 100) {
+      applyActionStat('hp', -10);
       addLog('空腹で倒れそうだ...(HP減少)', 'danger');
     }
-    if (stats.hp <= 0) {
+
+    setStats(nextStats);
+
+    if (nextStats.hp <= 0) {
       setGameOver(true);
       addLog('目の前が真っ暗になった... [GAMEOVER]', 'danger');
     }
   };
 
-  const processNightEvent = () => {
+  const processNightEvent = (baseStats) => {
     const roll = Math.random();
+    let nextStats = { ...baseStats };
+
+    const applyNightStat = (key, delta) => {
+      nextStats = applyStatDelta(nextStats, key, delta);
+      if (key === 'hp' && delta < 0) {
+        triggerDamageEffect();
+      }
+    };
 
     // Stage Specific Events
     let eventLog = '';
@@ -327,7 +355,7 @@ export default function App() {
     if (roll < 0.2) {
       // BAD EVENT
       const dmg = Math.floor(Math.random() * 10) + 10; // 10-20 dmg
-      updateStat('hp', -dmg);
+      applyNightStat('hp', -dmg);
       type = 'danger';
 
       switch (currentStage.id) {
@@ -339,18 +367,18 @@ export default function App() {
           break;
         case 'shelter':
           eventLog = `配管から汚染水が漏れている！被曝した可能性がある。(HP-${dmg})`;
-          updateStat('sanity', -10);
+          applyNightStat('sanity', -10);
           break;
         case 'wartime':
           eventLog = `近くに砲弾が着弾した！衝撃で吹き飛ばされた。(HP-${dmg})`;
-          updateStat('sanity', -20);
+          applyNightStat('sanity', -20);
           break;
         default:
           eventLog = `夜中にアクシデント発生！HP-${dmg}`;
       }
     } else if (roll > 0.9) {
       // GOOD EVENT
-      updateStat('sanity', 20);
+      applyNightStat('sanity', 20);
       type = 'success';
 
       switch (currentStage.id) {
@@ -398,17 +426,12 @@ export default function App() {
     }
 
     addLog(eventLog, type);
-
-    // Survival Check
-    if (stats.hp <= 0) {
-      setGameOver(true);
-      addLog('もう動けない... [GAMEOVER]', 'danger');
-    }
+    return nextStats;
   };
 
-  const checkSurvival = () => {
+  const checkSurvival = (currentDay) => {
     const target = currentStage.goal;
-    if (day >= target) {
+    if (currentDay >= target) {
       if (stageIdx < STAGES.length - 1) {
         setStageIdx(prev => prev + 1);
         setDay(1);
